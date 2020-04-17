@@ -1,7 +1,7 @@
-### compaRe
+# compaRe
 To measure similarity between samples, we developed COMPARE. It measures the similarity between two datasets with any number of dimensions and observations.
 
-### Installation
+## Installation
 
 To install the latest version from the github repository, use:
 
