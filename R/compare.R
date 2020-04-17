@@ -17,7 +17,7 @@
 #' @author Morteza H. Chalabi, \url{mor.chalabi@@gmail.com}
 #'
 #' @examples
-#' library(compaRe)
+#' require(compaRe)
 #'
 #' rm(list = ls())
 #'

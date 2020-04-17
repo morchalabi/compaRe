@@ -24,7 +24,7 @@ of rows (observations).
 TBD
 }
 \examples{
-library(compaRe)
+require(compaRe)
 
 rm(list = ls())
 

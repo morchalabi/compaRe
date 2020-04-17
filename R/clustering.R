@@ -22,7 +22,8 @@
 #' @author Morteza H. Chalabi, \url{mor.chalabi@@gmail.com}
 #'
 #' @examples
-#' library(compaRe)
+#' require(compaRe)
+#' require(igraph)
 #'
 #' rm(list = ls())
 #'
@@ -36,7 +37,7 @@
 #'                            controls_ = "7,23,30,35,55,106,164,193,214,228,246,254,258,286,343,351,414,444,467,489,540",
 #'                            thresh_ = NULL, smpl_graph = T, disp_graph = T)
 #'
-#' # Step 3: Plotting dispersion graph
+#' # Step 3: Plotting dispersion graph in current directory as a pdf file
 #'
 #' pdf(file = 'similarity_graph.pdf', width = 100, height = 100)
 #' par(mar = c(0,0,0,0))
@@ -44,6 +45,7 @@
 #' graphics.off()
 #'
 #' @export
+#' @import igraph
 
 clustering = function(simMat_ = NULL, controls_ = NULL, thresh_ = NULL, smpl_graph = TRUE, disp_graph = TRUE)
 {
