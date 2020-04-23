@@ -45,7 +45,6 @@
 #' graphics.off()
 #'
 #' @export
-#' @import igraph
 
 clustering = function(simMat_ = NULL, controls_ = NULL, thresh_ = NULL, smpl_graph = TRUE, disp_graph = TRUE)
 {
