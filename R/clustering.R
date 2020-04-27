@@ -8,14 +8,12 @@
 #' @param controls_ Indices of control samples in simMat_ as a string
 #' @param thresh_ Minimum for two samples being considered similar as a numeric
 #' @param smpl_graph If sample graph must be output (default True)
-#' @param disp_graph If dispersion graph must be output (default True)
 #'
 #' @details TBD
 #'
 #' @return samples_table: samples with their assigned community (dense region)
 #' @return cliques: cluster of samples
 #' @return samples_graph: graph of samples colored by community
-#' @return dispersion_graph: samples dispersed around contrl node
 #'
 #' @seealso \code{\link{compare}} for measuring spatial similarity between two samples.
 #'
@@ -35,18 +33,18 @@
 #'
 #' out_ = compaRe::clustering(simMat_ = as.matrix(simMat),
 #'                            controls_ = "7,23,30,35,55,106,164,193,214,228,246,254,258,286,343,351,414,444,467,489,540",
-#'                            thresh_ = NULL, smpl_graph = T, disp_graph = T)
+#'                            thresh_ = NULL, smpl_graph = T)
 #'
 #' # Step 3: Plotting dispersion graph in current directory as a pdf file
 #'
-#' pdf(file = 'similarity_graph.pdf', width = 100, height = 100)
+#' pdf(file = 'sample_graph.pdf', width = 100, height = 100)
 #' par(mar = c(0,0,0,0))
-#' plot(out_$dispersion_graph, add = F, mark.groups = which(V(out_$dispersion_graph)$name %in% 'Control'), mark.col = 'mistyrose1', mark.expand = 2, mark.border = NA, directed = F)
+#' plot(out_$samples_graph)
 #' graphics.off()
 #'
 #' @export
 
-clustering = function(simMat_ = NULL, controls_ = NULL, thresh_ = NULL, smpl_graph = TRUE, disp_graph = TRUE)
+clustering = function(simMat_ = NULL, controls_ = NULL, thresh_ = NULL, smpl_graph = TRUE)
 {
   require(igraph)     # if igraph pacakge is already installed
 
@@ -200,55 +198,5 @@ clustering = function(simMat_ = NULL, controls_ = NULL, thresh_ = NULL, smpl_gra
 
     output_[['samples_graph']] = g_
   }
-
-  # STEP 5: similarity graph ####
-
-  if(disp_graph)
-  {
-    message('Building dispersion graph')
-
-    # finding closest (most similar) node (parent node) to each node taking control node as root
-
-    simsVsCntrl = sort(simsVsCntrl, decreasing = T)
-    nodes_ = 'Control'     # nodes so far added to the graph
-    nodes_ind = 1           # nodes_ index
-    edges_ = list()         # edge list
-    for(child_node in names(simsVsCntrl))
-    {
-      parent_node = nodes_[ order(x = simMat_[child_node, nodes_], decreasing = T)[1] ]      # which nodes in nodes_ is closest to current
-      edges_[[nodes_ind]] = data.frame(from = parent_node,
-                                       to = child_node,
-                                       weight = simMat_[child_node, parent_node])            # add this edge to edge list
-      nodes_[nodes_ind+1] = child_node                                                      # add current node to nodes_
-      nodes_ind = nodes_ind + 1
-    }
-    edges_ = do.call(what = rbind, args = edges_)
-    edges_ = edges_[order(edges_$weight, decreasing = T),]
-
-    # making similarity graph
-
-    g_ = graph_from_data_frame(d = edges_, directed = F)      # creating graph (igraph) objet
-
-    # graph atts
-    g_$layout = layout_as_tree(graph = g_, root = which(V(g_)$name %in% 'Control'), circular = T )
-
-    # vertex atts
-    V(g_)$color = 'grey'
-    V(g_)$size <- 0.15
-    V(g_)$frame.color = NA
-    V(g_)$label.cex = 0.5
-    V(g_)$label.font = 2
-    V(g_)$label.dist = sample(x = seq(0,0.1,length.out = 4), size = length(V(g_)), replace = T)
-    V(g_)$label.degree = -pi/2
-    V(g_)$label.color = adjustcolor(col = 'black', alpha.f = .6)
-
-    # edge atts
-    E(g_)$width = 0.3
-    cols_ = colorRampPalette(colors = c('blue', 'red'))(nrow(edges_))# edges already ordered
-    E(g_)$color = cols_
-
-    output_[['dispersion_graph']] = g_
-  }
-
   return(output_)
 }
