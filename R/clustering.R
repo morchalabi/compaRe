@@ -8,12 +8,14 @@
 #' @param controls_ Indices of control samples in simMat_ as a string
 #' @param thresh_ Minimum for two samples being considered similar as a numeric
 #' @param smpl_graph If sample graph must be output (default True)
+#' @param disp_graph If dispersion graph must be output (default True)
 #'
 #' @details TBD
 #'
 #' @return samples_table: samples with their assigned community (dense region)
 #' @return cliques: cluster of samples
 #' @return samples_graph: graph of samples colored by community
+#' @return disp_graph: graph showing how samples disperse around control node
 #'
 #' @seealso \code{\link{compare}} for measuring spatial similarity between two samples.
 #'
@@ -35,16 +37,56 @@
 #'                            controls_ = "7,23,30,35,55,106,164,193,214,228,246,254,258,286,343,351,414,444,467,489,540",
 #'                            thresh_ = NULL, smpl_graph = T)
 #'
-#' # Step 3: Plotting dispersion graph in current directory as a pdf file
+#' # Step 3: Plotting samples graph in current directory as a pdf file
+#'
+#' # graph atts
+#' g_ = out_$samples_graph
+#' g_$layout = layout_nicely(graph = g_, dim = 3)
+#'
+#' V(g_)$size <- 2
+#' V(g_)$frame.color = NA
+#' V(g_)$label = NA
+#'
+#' # edge atts
+#' E(g_)$width = 0.3
+#' E(g_)$color = adjustcolor(col = 'grey80', alpha.f = .2)
 #'
 #' pdf(file = 'sample_graph.pdf', width = 100, height = 100)
 #' par(mar = c(0,0,0,0))
-#' plot(out_$samples_graph)
+#' plot(g_)
+#' graphics.off()
+#'
+#' # Step 4: Plotting dispersion graph
+#'
+#' # graph atts
+#' g_ = out_$dispersion_graph
+#' g_$layout = layout_nicely(graph = g_, dim = 2)
+#'
+#' # vertex atts
+#' V(g_)$color = 'grey'
+#' V(g_)$size <- 0.15
+#' V(g_)$frame.color = NA
+#' V(g_)$label.cex = 1
+#' V(g_)$label.font = 2
+#' V(g_)$label.dist = sample(x = seq(0,0.1,length.out = 4), size = length(V(g_)), replace = T)
+#' V(g_)$label.degree = -pi/2
+#' V(g_)$label.color = adjustcolor(col = 'black', alpha.f = .6)
+#'
+#' # edge atts
+#' cols_ = colorRampPalette(colors = c('red', 'blue'))(length(E(g_)))
+#' names(cols_) = sort(E(g_)$weight)     # lower values are assigned to red shades
+#' E(g_)$color = cols_[as.character(E(g_)$weight)]
+#' E(g_)$width = 1
+#' E(g_)$arrow.size = 0.2
+#'
+#' # plotting
+#' pdf(file = 'dispersion_graph.pdf', width = 80, height = 80)
+#' plot(g_, add = F, mark.groups = which(V(g_)$name %in% 'Control'), mark.col = 'mistyrose1', mark.expand = 2, mark.border = NA, directed = F)
 #' graphics.off()
 #'
 #' @export
 
-clustering = function(simMat_ = NULL, controls_ = NULL, thresh_ = NULL, smpl_graph = TRUE)
+clustering = function(simMat_ = NULL, controls_ = NULL, thresh_ = NULL, smpl_graph = TRUE, disp_graph = TRUE)
 {
   require(igraph)     # if igraph pacakge is already installed
 
@@ -162,16 +204,12 @@ clustering = function(simMat_ = NULL, controls_ = NULL, thresh_ = NULL, smpl_gra
 
   if(smpl_graph)
   {
-    message('Building samples graph')
+    message('Constructing samples graph')
 
     adj_mat = simMat_org
     adj_mat[ adj_mat < thresh_ ] = 0
     g_ = graph_from_adjacency_matrix(adjmatrix = adj_mat, mode = 'undirected', diag = F, weighted = T)
 
-    # graph atts
-    g_$layout = layout_nicely(graph = g_, dim = 3)
-
-    # Vertex atts
     # extracting communities with at least 2 nodes and coloring them, othrewise leaving them grey
 
     bigComs = which(2 <= comms_$csize)      # communities with size of at least 2 nodes
@@ -188,15 +226,27 @@ clustering = function(simMat_ = NULL, controls_ = NULL, thresh_ = NULL, smpl_gra
         V(g_)[i_]$color = adjustcolor(col = 'grey', alpha.f = .2)
       }
     }
-    V(g_)$size <- 2
-    V(g_)$frame.color = NA
-    V(g_)$label = NA
-
-    # edge atts
-    E(g_)$width = 0.3
-    E(g_)$color = adjustcolor(col = 'grey89', alpha.f = .2)
 
     output_[['samples_graph']] = g_
   }
+
+  # STEP 5: dispersion graph ####
+
+  if(disp_graph)
+  {
+    message('Constructing dispersion graph')
+
+    # finding closest (most similar) node (parent node) to each node taking control node as root
+
+    diag(simMat_) = 0
+    for(row_ in 1:nrow(simMat_))
+    {
+      simMat_[row_, which(simMat_[row_,] < max(simMat_[row_,]))] = 0
+    }
+    g_ = graph_from_adjacency_matrix(adjmatrix = simMat_, mode = 'directed', weighted = T)
+
+    output_[['dispersion_graph']] = g_
+  }
+
   return(output_)
 }
