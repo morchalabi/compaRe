@@ -34,7 +34,7 @@
 #'
 #' # Step 3: Comparing (measuring similarity)
 #'
-#' compaRe::compare(smpl1 = smpl1, smpl2 = smpl2, merge_ = TRUE)
+#' message(compaRe::compare(smpl1 = smpl1, smpl2 = smpl2, merge_ = TRUE))
 #'
 #' @export
 
@@ -98,49 +98,56 @@ compare = function(smpl1 = NULL, smpl2 = NULL, merge_ = TRUE)
       tot_rgns = tot_rgns + 3^(d_-1)
     }
 
-    # STEP 3: Extracting regions ####
-    message('Optimization')
+    # STEP 3: Denoising ####
+    message('Denoising')
 
-    # ordering smpl_ by region number
-    idxs_ = order(rgns_)
+    # denoising; removing hypercubes with fewer points than expected
+    small_smpl = if(nrow_1 < nrow_2) { nrow_1 }else{ nrow_2 }
+    min_pts = if(small_smpl < 200) { ceiling(.1*small_smpl) }else{ 20 }     # minimum number of points in each region
+    rgns_sz = as.data.frame(x = table(rgns_), stringsAsFactors = T)         # size of each hypercube (region)
+    rgns_sz = rgns_sz[which(min_pts <= rgns_sz$Freq),]
+    idxs_ = which(rgns_ %in% rgns_sz$rgns_)
+    rgns_ = rgns_[ idxs_ ]                                                  # removing noise regions
+    barcodes_ = barcodes_[idxs_]                                            # removing noise data points
+
+    # STEP 4: Extracting hypercubes ####
+    message('Extracting hypercubes')
+
+    # ordering smpl_ by region number required for next step
+    idxs_ = order(rgns_, decreasing = F)
     rgns_ = rgns_[idxs_]
     barcodes_ = barcodes_[idxs_]
-    smpl_ = smpl_[idxs_,]
-
-    # extracting start and end of each region (for sake of processing speed)
     rgns_ = as.character(rgns_)
-    uniq_rgns = unique(rgns_)
-    rgns_srt_end = matrix(data = NA, nrow = length(uniq_rgns), ncol = 2)
-    rownames(rgns_srt_end) = uniq_rgns
-    colnames(rgns_srt_end) = c('srt','end')
 
-    rgns_srt_end[ rgns_[1], "srt" ] = 1
-    rgns_srt_end[ rgns_[length(rgns_)], 'end'] = length(rgns_)
+    # extracting start of each region (for sake of processing speed)
+    rgns_srt = vector(mode = 'list',length = nrow(rgns_sz))     # a vector to keep track of start and end of each region in smpl_
+    names(rgns_srt) = rgns_sz$rgns_                             # since rgns_sz is returned by table() it already has unique regions
+    rgns_srt[[ rgns_[1] ]] = 1
     for(row_ in 2:length(rgns_))
     {
       if(rgns_[row_] != rgns_[row_-1] )
       {
-        rgns_srt_end[ rgns_[row_-1], "end"] = row_-1
-        rgns_srt_end[ rgns_[row_], "srt"] =  row_
+        rgns_srt[[ rgns_[row_] ]] =  row_
       }
     }
+    rgns_srt[['end']] = length(rgns_)+1                         # to mark end of last region
 
-    # STEP 4: Measuiring similarity ####
-    message('Computing similarity')
+    # STEP 5: Measuring similarity ####
+    message('Measuring similarity')
 
-    dissim_ = numeric(length = nrow(rgns_srt_end))      # a vetor containing dissimilarity in each hypercube
-    for(j_ in 1:nrow(rgns_srt_end))
+    dissim_ = numeric(length = length(rgns_srt))      # a vetor containing dissimilarity in each hypercube
+    for(j_ in 1:(length(rgns_srt)-1))                 # last element of rgns_srt keeps end of last region, so 1 must be removed
     {
-      idxs_ = rgns_srt_end[j_,'srt']:rgns_srt_end[j_,'end']     # start and end of current region in smpl_
-      bcs_in_rgn = barcodes_[idxs_]       # barcodes of observations in this region
+      idxs_ = rgns_srt[[j_]]:(rgns_srt[[j_+1]]-1)     # start and end of current region in smpl_
+      bcs_in_rgn = barcodes_[idxs_]                   # barcodes of observations in this region
 
       n_1 = length(which(bcs_in_rgn %in% 1))
       n_2 = length(idxs_) - n_1
 
-      por_1 = n_1/nrow_1                  # portion of data points from sample #1 in current hypercube
+      por_1 = n_1/nrow_1                              # portion of data points from sample #1 in current hypercube
       por_2 = n_2/nrow_2
 
-      if(por_1 == 0 | por_2 == 0)         # if one sample is absent in this hypercube, dissimilarity is 100%
+      if(por_1 == 0 | por_2 == 0)                     # if one sample is absent in this hypercube, dissimilarity is 100%
       {
         dissim_[j_] = 1
       }else
@@ -202,46 +209,55 @@ compare = function(smpl1 = NULL, smpl2 = NULL, merge_ = TRUE)
         tot_rgns = tot_rgns + 3^(d_-1)
       }
 
-      # STEP 2: Extracting regions ####
-      message('Optimization')
+      # STEP 2: Denoising ####
+      message('Denoising')
 
-      # ordering smpl_i by region number
+      # denoising; removing hypercubes with fewer points than expected
+      min_pts = if(nrow(smpl_i) < 200) { ceiling(.1*nrow(smpl_i)) }else{ 20 }     # minimum number of points in each region !!!!!!!!!!!!!!!!!!!!
+      rgns_sz = as.data.frame(x = table(rgns_), stringsAsFactors = T)             # size of each hypercube (region)
+      rgns_sz = rgns_sz[which(min_pts <= rgns_sz$Freq),]
+      idxs_ = which(rgns_ %in% rgns_sz$rgns_)
+      rgns_ = rgns_[ idxs_ ]                                                      # removing noise regions
+
+      # STEP 3: Extracting hypercubes ####
+      message('Extracting hypercubes')
+
+      # ordering regions descendingly required for next step
       idxs_ = order(rgns_)
       rgns_ = rgns_[idxs_]
-      smpl_i = smpl_i[idxs_,]
+      rgns_ = as.character(rgns_)
 
       # extracting start and end of each region (for sake of processing speed)
-      rgns_ = as.character(rgns_)
-      uniq_rgns = unique(rgns_)
-      rgns_srt_end = matrix(data = NA, nrow = length(uniq_rgns), ncol = 2)
-      rownames(rgns_srt_end) = uniq_rgns
-      colnames(rgns_srt_end) = c('srt','end')
 
-      rgns_srt_end[ rgns_[1], "srt" ] = 1
-      rgns_srt_end[ rgns_[length(rgns_)], 'end'] = length(rgns_)
+      rgns_srt_end = vector(mode = 'list',length = nrow(rgns_sz))     # a vector to keep track of start and end of each region in smpl_
+      names(rgns_srt_end) = rgns_sz$rgns_                             # since rgns_sz is returned by table() it already has unique regions
+      rgns_srt_end[[ rgns_[1] ]]$srt = 1
       for(row_ in 2:length(rgns_))
       {
-        if(rgns_[row_] != rgns_[row_-1] )
+        if(rgns_[row_] != rgns_[row_-1])
         {
-          rgns_srt_end[ rgns_[row_-1], "end"] = row_-1
-          rgns_srt_end[ rgns_[row_], "srt"] =  row_
+          rgns_srt_end[[ rgns_[row_-1] ]]$end = row_-1
+          rgns_srt_end[[ rgns_[row_] ]]$srt = row_
         }
       }
+      rgns_srt_end[[ rgns_[length(rgns_)] ]]$end = length(rgns_)      # to mark end of last region
       rgns_srt_end_smpls[[i_]] = rgns_srt_end
       i_ = i_ + 1
     }
 
-    # STEP 3: Measuiring similarity ####
-    message('Computing similarity')
+    # STEP 4: Measuring similarity ####
+    message('Measuring similarity')
 
-    all_rgns = union(rownames(rgns_srt_end_smpls[[1]]), rownames(rgns_srt_end_smpls[[2]]))
-    dissim_ = numeric(length = length(all_rgns))      # a vetor containing dissimilarity in each hypercube
-    j_ = 1
+    all_rgns = union(names(rgns_srt_end_smpls[[1]]), names(rgns_srt_end_smpls[[2]]))      # union of all hypercubes in both samples
+    dissim_ = numeric(length = length(all_rgns))                                          # a vetor containing dissimilarity in each hypercube
+    j_ = 1                                                                                # a counter for dissim_
     for(rgn_ in all_rgns)
     {
-      n_1 = tryCatch(expr = rgns_srt_end_smpls[[1]][rgn_,"end"]-rgns_srt_end_smpls[[1]][rgn_,"srt"]+1, error = function(er_) { return(0) })
-      n_2 = tryCatch(expr = rgns_srt_end_smpls[[2]][rgn_,"end"]-rgns_srt_end_smpls[[2]][rgn_,"srt"]+1, error = function(er_) { return(0) })
-      por_1 = n_1/nrow_1      # portion of data points from sample #1 in current hypercube
+      n_1 = rgns_srt_end_smpls[[1]][[rgn_]]$end-rgns_srt_end_smpls[[1]][[rgn_]]$srt+1
+      if(length(n_1) == 0) { n_1 = 0}
+      n_2 = rgns_srt_end_smpls[[2]][[rgn_]]$end-rgns_srt_end_smpls[[2]][[rgn_]]$srt+1
+      if(length(n_2) == 0) { n_2 = 0}
+      por_1 = n_1/nrow_1     # portion of data points from sample #1 in current hypercube
       por_2 = n_2/nrow_2
 
       if(por_1 == 0 | por_2 == 0)
@@ -252,7 +268,7 @@ compare = function(smpl1 = NULL, smpl2 = NULL, merge_ = TRUE)
         dissim_[j_] = abs(por_1 - por_2)
       }
 
-      j_ = j_ + 1
+      j_ = j_+1
     }
     simScore_ = (1-mean(dissim_))*100
 
