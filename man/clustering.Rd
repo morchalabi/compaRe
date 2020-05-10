@@ -9,7 +9,7 @@ clustering(
   controls_ = NULL,
   thresh_ = NULL,
   smpl_graph = TRUE,
-  disp_graph = TRUE
+  sim_graph = TRUE
 )
 }
 \arguments{
@@ -21,7 +21,7 @@ clustering(
 
 \item{smpl_graph}{If sample graph must be output (default True)}
 
-\item{disp_graph}{If dispersion graph must be output (default True)}
+\item{sim_graph}{If similarity graph must be output (default True)}
 }
 \value{
 samples_table: samples with their assigned community (dense region)
@@ -30,7 +30,7 @@ cliques: cluster of samples
 
 samples_graph: graph of samples colored by community
 
-dispersion_graph: samples dispersed around contrl node
+sim_graph: graph possibly showing sample lineages
 }
 \description{
 It needs some samples as controls and returns maximal cliques as clusters and highly interconnected regions as
@@ -45,21 +45,94 @@ require(igraph)
 
 rm(list = ls())
 
-# Step 1: Reading in similarity matrix
+# Step 1: Reading in similarity matrix ####
 
 data(package = 'compaRe', list = c('simMat'))
 
-# Step 2: Clustering
+# Step 2: Clustering ####
 
 out_ = compaRe::clustering(simMat_ = as.matrix(simMat),
                            controls_ = "7,23,30,35,55,106,164,193,214,228,246,254,258,286,343,351,414,444,467,489,540",
-                           thresh_ = NULL, smpl_graph = T, disp_graph = T)
+                           thresh_ = NULL, smpl_graph = T, sim_graph = T)
 
-# Step 3: Plotting dispersion graph in current directory as a pdf file
+# Step 3: Plotting samples graph in current directory as a pdf file ####
 
-pdf(file = 'similarity_graph.pdf', width = 100, height = 100)
-par(mar = c(0,0,0,0))
-plot(out_$dispersion_graph, add = F, mark.groups = which(V(out_$dispersion_graph)$name \%in\% 'Control'), mark.col = 'mistyrose1', mark.expand = 2, mark.border = NA, directed = F)
+# graph atts
+g_ = out_$samples_graph
+g_$layout = layout_nicely(graph = g_, dim = 3)
+
+# vertex atts
+x_rng = range(g_$layout[,1])
+y_rng = range(g_$layout[,2])
+comms_ = unique(V(g_)$comm)
+for(comm_ in comms_)
+{
+  if(comm_ ==  0) { next() }
+
+  inds_ = which(V(g_)$comm \%in\% comm_)
+  if(1 < length(inds_))
+  {
+    centroid_ = c(sample(seq(x_rng[1],x_rng[2],by = 0.1),1), sample(seq(y_rng[1],y_rng[2],by = 0.1),1))
+    anch_angs = seq(0, 2*pi, length.out = length(inds_)+1)
+    r_ = 1
+    anch_x = r_*cos(anch_angs[-1])+centroid_[1]
+    anch_y = r_*sin(anch_angs[-1])+centroid_[2]
+    g_$layout[inds_,1] = anch_x
+    g_$layout[inds_,2] = anch_y
+  }
+}
+cols_ = colorRampPalette(colors = c('red','green','blue','purple','orange','pink','yellow'))(length(comms_))
+V(g_)$color = adjustcolor(col = cols_[V(g_)$comm+1], alpha.f = .7)
+V(g_)$color[which(V(g_)$comm \%in\% 0)] = adjustcolor(col = 'grey', alpha.f = .4)
+V(g_)$size <- 4
+V(g_)$frame.color = NA
+V(g_)$label = out_$samples_table[V(g_)$name, 'community']
+V(g_)$label[which(V(g_)$label \%in\% 0)] = NA
+V(g_)$label.cex = 4
+V(g_)$label.font = 2
+
+# edge atts
+E(g_)$width = 0.3
+E(g_)$color = adjustcolor(col = 'grey', alpha.f = .3)
+E(g_)$color[E(g_)$intra_comm] = 'black'
+
+# plotting
+pdf(file = 'sample_graph.pdf', width = 70, height = 70)
+par(mai = c(0, 0, 0,0))
+plot(g_)
+graphics.off()
+
+# Step 4: Plotting similarity graph ####
+
+# graph atts
+g_ = out_$similarity_graph
+g_$layout = layout_nicely(graph = g_, dim = 2)
+
+# vertex atts
+V(g_)$color = 'grey'
+V(g_)$size <- 0.15
+V(g_)$frame.color = NA
+V(g_)$label.cex = 1
+V(g_)$label.font = 2
+V(g_)$label.dist = 0
+V(g_)$label.degree = pi/2
+V(g_)$label.color = adjustcolor(col = 'black', alpha.f = .6)
+
+# edge atts
+cols_ = colorRampPalette(colors = c('red', 'blue'))(length(E(g_)))
+names(cols_) = sort(E(g_)$weight)     # lower values are assigned to red shades
+E(g_)$color = cols_[as.character(E(g_)$weight)]
+E(g_)$width = 1
+E(g_)$arrow.size = 0.3
+E(g_)$label = round(E(g_)$weight,1)
+E(g_)$label.cex = 0.7
+E(g_)$label.font = 2
+E(g_)$label.color = 'darkgreen'
+
+# plotting
+pdf(file = 'similarity_graph.pdf', width = 70, height = 70)
+par(mai = c(0, 0, 0,0))
+plot(g_, add = F, mark.groups = which(V(g_)$name \%in\% 'Control'), mark.col = 'lightgreen', mark.expand = 2, mark.border = NA, directed = F)
 graphics.off()
 
 }

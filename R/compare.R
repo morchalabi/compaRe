@@ -213,7 +213,7 @@ compare = function(smpl1 = NULL, smpl2 = NULL, merge_ = TRUE)
       message('Denoising')
 
       # denoising; removing hypercubes with fewer points than expected
-      min_pts = if(nrow(smpl_i) < 200) { ceiling(.1*nrow(smpl_i)) }else{ 20 }     # minimum number of points in each region !!!!!!!!!!!!!!!!!!!!
+      min_pts = if(nrow(smpl_i) < 200) { ceiling(.1*nrow(smpl_i)) }else{ 20 }     # minimum number of points in each region
       rgns_sz = as.data.frame(x = table(rgns_), stringsAsFactors = T)             # size of each hypercube (region)
       rgns_sz = rgns_sz[which(min_pts <= rgns_sz$Freq),]
       idxs_ = which(rgns_ %in% rgns_sz$rgns_)

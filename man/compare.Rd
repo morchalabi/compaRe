@@ -41,7 +41,7 @@ smpl2 = log(smpl2+1)
 
 # Step 3: Comparing (measuring similarity)
 
-compaRe::compare(smpl1 = smpl1, smpl2 = smpl2, merge_ = TRUE)
+message(compaRe::compare(smpl1 = smpl1, smpl2 = smpl2, merge_ = TRUE))
 
 }
 \seealso{
