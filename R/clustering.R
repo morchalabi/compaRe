@@ -158,10 +158,14 @@ clustering = function(simMat_ = NULL, controls_ = NULL, thresh_ = NULL, smpl_gra
       message('\nError: for inferring similarity cutoff, there must be at least 2 control samples!')
       quit(save = 'no')
     }
-    cntSimMat = simMat_[controls_, controls_]      # similarity submatirx of controls
-    diag(cntSimMat) = 0
-    cntSimVlas = apply(X = cntSimMat, MARGIN = 1, FUN = max)
-    thresh_ = min(cntSimVlas)
+
+    # finding threshold using maximum spanning tree
+    # it is equivalent to a for loop starting with min similarity in ascending order and
+    # stop when graph is not connected anymore using igraphh::is.connected()
+
+    g_ = graph_from_adjacency_matrix(adjmatrix = -simMat_[controls_, controls_], mode = 'undirected',weighted = T, diag = F)      # graph with negative weights
+    g_ = mst(graph = g_)                                                                                                          # maximum spanning tree
+    thresh_ = min(-E(g_)$weight)     # threshold is the maximum control similarity for which control graph remains a tree
   }
   message('\nSimilarity threshold set to: ', thresh_)
 
@@ -271,19 +275,20 @@ clustering = function(simMat_ = NULL, controls_ = NULL, thresh_ = NULL, smpl_gra
     adj_['Control',] = 0                              # control node shoul not point to other nodes
     for(row_ in 1:(nrow(simMat_)-1))                  # last row/column is control
     {
-      max_ = trunc(max(simMat_[row_,]))-2             # most similar values for current node (node_A); -2: to leave room for inaccuracy in sim measurement
-      nns_ = which(max_ <= simMat_[row_,])            # nearest neighbors
-      cor_ = double(length = length(nns_))            # a vector to store correlations of nns_ with current node
-      j_ = 1                                          # counter of cor_
-      for(nn_ in nns_)                                # for each nns_
+      nns_ = order(simMat_[row_,], decreasing = T)[1:min(3,ncol(simMat_))]      # 3 nearest neighbors
+      max_ = simMat_[row_, nns_[1]]                                             # neighbor node with the highest similarity with node_A
+      nns_ = nns_[which( abs(simMat_[row_, nns_] - max_) <= 2)]                 # considers only nns_ within [max-2, max] where 0 < max-2
+      cor_ = double(length = length(nns_))                                      # a vector to store correlations of nns_ with current node
+      j_ = 1                                                                    # counter of cor_
+      for(nn_ in nns_)                                                          # for each nns_
       {
-        node_A = simMat_[row_,-c(row_,nn_)]           # sim values of node_A with all other nodes except for node_B
+        node_A = simMat_[row_,-c(row_,nn_)]                                     # sim values of node_A with all other nodes except for node_B
         node_B = simMat_[nn_, -c(row_,nn_)]
         cor_[j_] = cor(node_A, node_B)
         j_ = j_ + 1
       }
-      nn_ = nns_[order(cor_, decreasing = T)[1]]      # which of nns_ had highest correlation with node_A?
-      adj_[row_, -nn_] = 0                            # removing all edges from node_A except for nn_ -> node_A
+      nn_ = nns_[order(cor_, decreasing = T)[1]]                                # which of nns_ had highest correlation with node_A?
+      adj_[row_, -nn_] = 0                                                      # removing all edges from node_A except for nn_ -> node_A
     }
     g_ = graph_from_adjacency_matrix(adjmatrix = adj_, mode = 'directed', weighted = T)
 
