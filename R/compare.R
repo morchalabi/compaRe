@@ -6,7 +6,7 @@
 #'
 #' @param smpl1 First smaple as a matrix or data frame object
 #' @param smpl2 Second sample
-#' @param merge_ If two samples must be merged first (default True)
+#' @param n_ Number by which each dimension (column) is divided (default 4)
 #'
 #' @details TBD
 #'
@@ -34,179 +34,77 @@
 #'
 #' # Step 3: Comparing (measuring similarity)
 #'
-#' message(compaRe::compare(smpl1 = smpl1, smpl2 = smpl2, merge_ = TRUE))
+#' message(compaRe::compare(smpl1 = smpl1, smpl2 = smpl2, n_ = 4))
 #'
 #' @export
 
-compare = function(smpl1 = NULL, smpl2 = NULL, merge_ = TRUE)
+compare = function(smpl1 = NULL, smpl2 = NULL, n_ = 4)
 {
+  # STEP 1: Preprocessing ####
+
+  smpl1 = 2*(smpl1 - min(smpl1))/(diff(range(smpl1)))-1
+  smpl2 = 2*(smpl2 - min(smpl2))/(diff(range(smpl2)))-1
   nrow_1 = nrow(smpl1)
   nrow_2 = nrow(smpl2)
   smpl_ = list(smpl1, smpl2)
+  rm(smpl1, smpl2)
 
-  if(merge_)      # if samples should be merged
+  # STEP 2: Forming hypercubes ####
+  message('Forming hypercubes')
+
+  rgns_smpl = list()      # a list to store regions (hypercubes) for both samples
+  i_ = 1                  # counter of rgns_smpl
+  for(smpl_i in smpl_)
   {
-    # STEP 1: Merging two data sets ####
-    message('Merging two data sets')
-
-    barcodes_ = rep(1, nrow(smpl1))
-    barcodes_ = as.integer(c(barcodes_, rep(2, nrow(smpl2))))
-    smpl_ = do.call(smpl_, what = rbind)
-    rm(smpl1, smpl2)
-
-    # STEP 2: Forming hypercubes ####
-    message('Forming hypercubes')
-
-    rgns_ = rep(0, nrow(smpl_))
+    rgns_ = rep(0, nrow(smpl_i))
     tot_rgns = 0
-    for(d_ in 1:ncol(smpl_))
+    for(d_ in 1:ncol(smpl_i))
     {
-      dvds_ = quantile(x = smpl_[,d_], probs = c(1/3,2/3))      # tertiles
-
       if(d_ == 1)
       {
         f_d = rgns_
       }else
       {
-        bInfo = rgns_ - tot_rgns
-        s_d_1 = bInfo %/% 3^(d_-2)
-        f_d_1 = bInfo - s_d_1*3^(d_-2)
-        f_d = f_d_1*3 + s_d_1
+        s_d_1 = (rgns_-tot_rgns) %/% n_^(d_-2)          # number of siblings of the parent node (at d-1 dimension). rgns is branch number of the parent
+        f_d_1 = (rgns_-tot_rgns) - s_d_1*n_^(d_-2)      # number of families before the parent node
+        f_d = f_d_1*n_ + s_d_1                          # number of family before current child node
       }
 
-      # first hypercube in current dimension
-      rows_ = which(smpl_[,d_] < dvds_[1])
-      if( 0 < length(rows_))
+      # jth hypercube in current dimension; 1 siblings are behind
+      dvds_ = c(seq(-1,1,length.out = n_+1)[1:n_],1.01)     # dividing points
+      for(j_ in 2:length(dvds_))
       {
-        rgns_[rows_] = (tot_rgns + 3^(d_-1)) + f_d[rows_]
-      }
-
-      # second hypercube in current dimension
-      rows_ = which(dvds_[1] <= smpl_[,d_] & smpl_[,d_] <= dvds_[2])
-      if( 0 < length(rows_))
-      {
-        rgns_[rows_] = (tot_rgns + 3^(d_-1)) + f_d[rows_] + 3^(d_-1)
-      }
-
-      # third hypercube in current dimension
-      rows_ = which(dvds_[2] < smpl_[,d_])
-      if( 0 < length(rows_))
-      {
-        rgns_[rows_] = (tot_rgns + 3^(d_-1)) + f_d[rows_] + 2*3^(d_-1)
-      }
-
-      tot_rgns = tot_rgns + 3^(d_-1)
-    }
-
-    # STEP 3: Measuring similarity ####
-    message('Measuring similarity')
-
-    # ordering smpl_ by region number required for next step
-    idxs_ = order(rgns_, decreasing = F)
-    rgns_ = rgns_[idxs_]
-    barcodes_ = barcodes_[idxs_]
-
-    # measuring similarity
-    rgns_sz = table(rgns_)
-    rgn_srt = 1
-    dissim_ = numeric(length = length(rgns_sz))      # a vetor containing dissimilarity in each hypercube
-    j_ = 1
-    for(rgn_sz in rgns_sz)
-    {
-      rgn_end = rgn_srt+rgn_sz-1
-      barcodes_rgn = barcodes_[rgn_srt:rgn_end]                   # barcodes of observations in this region
-      rgn_srt = rgn_end + 1
-
-      n_1 = length(which(barcodes_rgn %in% 1))
-      n_2 = rgn_sz - n_1
-
-      por_1 = n_1/nrow_1                              # portion of data points from sample #1 in current hypercube
-      por_2 = n_2/nrow_2
-
-      if(por_1 == 0 | por_2 == 0)                     # if one sample is absent in this hypercube, dissimilarity is 100%
-      {
-        dissim_[j_] = 1
-      }else
-      {
-        dissim_[j_] = abs(por_1 - por_2)
-      }
-      j_ = j_ + 1
-    }
-    return((1-mean(dissim_))*100)
-
-  }else       # if samples should not be merged
-  {
-    rm(smpl1, smpl2)
-
-    # STEP 1: Forming hypercubes ####
-    message('Forming hypercubes')
-
-    rgns_smpl = list()      # alist to store regions (hypercubes) for both samples
-    i_ = 1                  # counter of rgns_smpl
-    for(smpl_i in smpl_)
-    {
-      rgns_ = rep(0, nrow(smpl_i))
-      tot_rgns = 0
-      for(d_ in 1:ncol(smpl_i))
-      {
-        dvds_ = quantile(x = smpl_i[,d_], probs = c(1/3,2/3))     # tertiles
-
-        if(d_ == 1)
-        {
-          f_d = rgns_
-        }else
-        {
-          bInfo = rgns_ - tot_rgns
-          s_d_1 = bInfo %/% 3^(d_-2)
-          f_d_1 = bInfo - s_d_1*3^(d_-2)
-          f_d = f_d_1*3 + s_d_1
-        }
-
-        # first hypercube in current dimension
-        rows_ = which(smpl_i[,d_] < dvds_[1])
+        rows_ = which(dvds_[j_-1] <= smpl_i[,d_] & smpl_i[,d_] < dvds_[j_])
         if( 0 < length(rows_))
         {
-          rgns_[rows_] = (tot_rgns + 3^(d_-1)) + f_d[rows_]
+          rgns_[rows_] = (tot_rgns + n_^(d_-1)) + f_d[rows_] + (j_-2)*n_^(d_-1)
         }
-
-        # second hypercube in current dimension
-        rows_ = which(dvds_[1] <= smpl_i[,d_] & smpl_i[,d_] <= dvds_[2])
-        if( 0 < length(rows_))
-        {
-          rgns_[rows_] = (tot_rgns + 3^(d_-1)) + f_d[rows_] + 3^(d_-1)
-        }
-
-        # third hypercube in current dimension
-        rows_ = which(dvds_[2] < smpl_i[,d_])
-        if( 0 < length(rows_))
-        {
-          rgns_[rows_] = (tot_rgns + 3^(d_-1)) + f_d[rows_] + 2*3^(d_-1)
-        }
-
-        tot_rgns = tot_rgns + 3^(d_-1)
       }
-      rgns_smpl[[i_]] = rgns_
-      i_ = i_+1
-    }
 
-    # STEP 2 : Measuring similarity ####
-    message('Measuring similarity')
-
-    common_rgns = intersect(rgns_smpl[[1]],rgns_smpl[[2]])      # interstion of regions in both samples
-    exlv_rgns_disim = comm_rgns_disim = 0
-    nrows_ = c(nrow_1, nrow_2)
-    for(i_ in 1:2)
-    {
-      exlv_rgns_inds = which(!rgns_smpl[[i_]] %in% common_rgns)
-      if(length(exlv_rgns_inds) != 0)
-      {
-        exlv_rgns = rgns_smpl[[i_]][exlv_rgns_inds]
-        exlv_rgns_disim = exlv_rgns_disim + length(unique(exlv_rgns))
-        rgns_smpl[[i_]] = rgns_smpl[[i_]][-exlv_rgns_inds]
-      }
-      comm_rgns_disim = abs(table(sort(rgns_smpl[[i_]]))/nrows_[i_] - comm_rgns_disim)
+      tot_rgns = tot_rgns + 4^(d_-1)      # updating total regions (hypercubes)
     }
-    mean_dissim = sum(exlv_rgns_disim,comm_rgns_disim)/(exlv_rgns_disim+length(common_rgns))
-    return( (1-mean_dissim)*100)
+    rgns_smpl[[i_]] = rgns_
+    i_ = i_+1
   }
+
+  # STEP 3 : Measuring similarity ####
+  message('Measuring similarity')
+
+  common_rgns = intersect(rgns_smpl[[1]],rgns_smpl[[2]])      # interstion of regions in both samples
+  exlv_rgns_disim = comm_rgns_disim = 0
+  nrows_ = c(nrow_1, nrow_2)
+  for(i_ in 1:2)
+  {
+    exlv_rgns_inds = which(!rgns_smpl[[i_]] %in% common_rgns)
+    if(length(exlv_rgns_inds) != 0)
+    {
+      exlv_rgns = rgns_smpl[[i_]][exlv_rgns_inds]
+      exlv_rgns_disim = exlv_rgns_disim + length(unique(exlv_rgns))
+      rgns_smpl[[i_]] = rgns_smpl[[i_]][-exlv_rgns_inds]
+    }
+    comm_rgns_disim = abs(table(sort(rgns_smpl[[i_]]))/nrows_[i_] - comm_rgns_disim)
+  }
+  mean_dissim = sum(exlv_rgns_disim,comm_rgns_disim)/(exlv_rgns_disim+length(common_rgns))
+  return( (1-mean_dissim)*100)
 }
+
