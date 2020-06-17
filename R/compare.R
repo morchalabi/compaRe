@@ -6,7 +6,7 @@
 #'
 #' @param smpl1 First smaple as a matrix or data frame object
 #' @param smpl2 Second sample
-#' @param n_ Number by which each dimension (column) is divided (default 4)
+#' @param n_ Number by which each dimension (column) is divided (default 5)
 #'
 #' @details TBD
 #'
@@ -18,6 +18,7 @@
 #'
 #' @examples
 #' require(compaRe)
+#' require(dbscan)
 #'
 #' rm(list = ls())
 #'
@@ -38,15 +39,19 @@
 #'
 #' @export
 
-compare = function(smpl1 = NULL, smpl2 = NULL, n_ = 4)
+compare = function(smpl1 = NULL, smpl2 = NULL, n_ = 5)
 {
-  # STEP 1: Preprocessing ####
+  require(dbscan)     # for LOF
 
-  smpl1 = 2*(smpl1 - min(smpl1))/(diff(range(smpl1)))-1
-  smpl2 = 2*(smpl2 - min(smpl2))/(diff(range(smpl2)))-1
-  nrow_1 = nrow(smpl1)
-  nrow_2 = nrow(smpl2)
-  smpl_ = list(smpl1, smpl2)
+  # STEP 1: Preprocessing ####
+  message('Preprocessing')
+
+  # universal resizing so both samples are within range [-1,1] in all dimensions
+  smpl_tmp = do.call(what = rbind, args = list(smpl1, smpl2))
+  smpl_tmp = 2*(smpl_tmp - min(smpl_tmp))/(diff(range(smpl_tmp)))-1
+  smpl1 = smpl_tmp[1:nrow(smpl1),]
+  smpl2 = smpl_tmp[(nrow(smpl1)+1):nrow(smpl_tmp),]
+  smpls_ = list(smpl1, smpl2)
   rm(smpl1, smpl2)
 
   # STEP 2: Forming hypercubes ####
@@ -54,24 +59,18 @@ compare = function(smpl1 = NULL, smpl2 = NULL, n_ = 4)
 
   rgns_smpl = list()      # a list to store regions (hypercubes) for both samples
   i_ = 1                  # counter of rgns_smpl
-  for(smpl_i in smpl_)
+  dvds_ = c(seq(-1,1,length.out = n_+1)[1:n_],1.01)     # dividing points
+  for(smpl_i in smpls_)
   {
-    rgns_ = rep(0, nrow(smpl_i))
+    rgns_ = rep(0, nrow(smpl_i))      # holds region numbers for each child node
     tot_rgns = 0
     for(d_ in 1:ncol(smpl_i))
     {
-      if(d_ == 1)
-      {
-        f_d = rgns_
-      }else
-      {
-        s_d_1 = (rgns_-tot_rgns) %/% n_^(d_-2)          # number of siblings of the parent node (at d-1 dimension). rgns is branch number of the parent
-        f_d_1 = (rgns_-tot_rgns) - s_d_1*n_^(d_-2)      # number of families before the parent node
-        f_d = f_d_1*n_ + s_d_1                          # number of family before current child node
-      }
+      s_d_1 = (rgns_-tot_rgns) %/% n_^(d_-2)          # number of siblings of the parent node (at d-1 dimension). rgns is branch number of the parent
+      f_d_1 = (rgns_-tot_rgns) - s_d_1*n_^(d_-2)      # number of families before the parent node
+      f_d = f_d_1*n_ + s_d_1                          # number of family before current child node
 
-      # jth hypercube in current dimension; 1 siblings are behind
-      dvds_ = c(seq(-1,1,length.out = n_+1)[1:n_],1.01)     # dividing points
+      # dividing current division
       for(j_ in 2:length(dvds_))
       {
         rows_ = which(dvds_[j_-1] <= smpl_i[,d_] & smpl_i[,d_] < dvds_[j_])
@@ -81,7 +80,8 @@ compare = function(smpl1 = NULL, smpl2 = NULL, n_ = 4)
         }
       }
 
-      tot_rgns = tot_rgns + 4^(d_-1)      # updating total regions (hypercubes)
+      # updating total regions (hypercubes)
+      tot_rgns = tot_rgns + n_^(d_-1)
     }
     rgns_smpl[[i_]] = rgns_
     i_ = i_+1
@@ -90,21 +90,30 @@ compare = function(smpl1 = NULL, smpl2 = NULL, n_ = 4)
   # STEP 3 : Measuring similarity ####
   message('Measuring similarity')
 
-  common_rgns = intersect(rgns_smpl[[1]],rgns_smpl[[2]])      # interstion of regions in both samples
-  exlv_rgns_disim = comm_rgns_disim = 0
-  nrows_ = c(nrow_1, nrow_2)
+  # dissimilarity value in a hypercube: substraction of 2 portions if common, 1 if exclusive
+  common_rgns = intersect(rgns_smpl[[1]],rgns_smpl[[2]])      # interstion of regions in both samples common regions
+  exlv_rgns_disim = comm_rgns_disim = 0                       # holds amount of dissimilarity in exclusive and common regions respectively
   for(i_ in 1:2)
   {
-    exlv_rgns_inds = which(!rgns_smpl[[i_]] %in% common_rgns)
+    exlv_rgns_inds = which(!rgns_smpl[[i_]] %in% common_rgns)     # indices of exclusive regions
     if(length(exlv_rgns_inds) != 0)
     {
-      exlv_rgns = rgns_smpl[[i_]][exlv_rgns_inds]
-      exlv_rgns_disim = exlv_rgns_disim + length(unique(exlv_rgns))
+      # cmoputing LOF on points in exclusive regions
+      exlv_rgns = rgns_smpl[[i_]][exlv_rgns_inds]                 # extracting exclusive regions
+      exlv_pnts = smpls_[[i_]][exlv_rgns_inds,,drop = F]          # extracting points in exclusive regions
+      if(20 <= nrow(exlv_pnts))                                   # perform LOF if there are at least 20 exclusive points
+      {
+        message('\tRemoving outliers from sample #', i_)
+        lof_ = lof(x = exlv_pnts, k = 3, sort = F, approx = round(nrow(exlv_pnts)/1e5,1))     # kNN works too slowly if dataset size is over 1e5. approx helps to speed up
+        exlv_rgns_disim = exlv_rgns_disim + length(unique(exlv_rgns[which(lof_ < 1.3)]))      # dissim in exclusive regions: for each signal exclusive region (i.e. lof < 1.3), 1 is incremented as penalty
+      }
+
+      # extracting common regions
       rgns_smpl[[i_]] = rgns_smpl[[i_]][-exlv_rgns_inds]
     }
-    comm_rgns_disim = abs(table(sort(rgns_smpl[[i_]]))/nrows_[i_] - comm_rgns_disim)
+    comm_rgns_disim = abs( table(sort(rgns_smpl[[i_]]))/nrow(smpls_[[i_]]) - comm_rgns_disim )      # dissim in common regions
   }
-  mean_dissim = sum(exlv_rgns_disim,comm_rgns_disim)/(exlv_rgns_disim+length(common_rgns))
-  return( (1-mean_dissim)*100)
-}
+  mean_dissim = sum(exlv_rgns_disim,comm_rgns_disim)/(exlv_rgns_disim+length(common_rgns))      # total dissim is average of dissim vals in common and exclusive regions
 
+  return( (1-mean_dissim)*100)      # similarity is 1-dissimilarity
+}
