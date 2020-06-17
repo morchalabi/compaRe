@@ -41,6 +41,7 @@
 
 compare = function(smpl1 = NULL, smpl2 = NULL, n_ = 5)
 {
+  require(parallel)
   require(dbscan)     # for LOF
 
   # STEP 1: Preprocessing ####
@@ -88,32 +89,39 @@ compare = function(smpl1 = NULL, smpl2 = NULL, n_ = 5)
   }
 
   # STEP 3 : Measuring similarity ####
-  message('Measuring similarity')
+  message('Measuring similarity\n\tRemoving outliers')
 
-  # dissimilarity value in a hypercube: substraction of 2 portions if common, 1 if exclusive
-  common_rgns = intersect(rgns_smpl[[1]],rgns_smpl[[2]])      # interstion of regions in both samples common regions
-  exlv_rgns_disim = comm_rgns_disim = 0                       # holds amount of dissimilarity in exclusive and common regions respectively
-  for(i_ in 1:2)
+  # dissimilarity value in a hypercube: subtraction of 2 portions if common, 1 if exclusive
+  common_rgns = intersect(rgns_smpl[[1]],rgns_smpl[[2]])      # intersection of regions in both samples common regions
+  myFunc = function(i_, rgns_smpl, smpls_)
   {
+    # computing LOF on points in exclusive regions
+    exlv_rgns_disim = 0                                           # holds amount of dissimilarity in exclusive regions
     exlv_rgns_inds = which(!rgns_smpl[[i_]] %in% common_rgns)     # indices of exclusive regions
     if(length(exlv_rgns_inds) != 0)
     {
-      # cmoputing LOF on points in exclusive regions
-      exlv_rgns = rgns_smpl[[i_]][exlv_rgns_inds]                 # extracting exclusive regions
-      exlv_pnts = smpls_[[i_]][exlv_rgns_inds,,drop = F]          # extracting points in exclusive regions
-      if(20 <= nrow(exlv_pnts))                                   # perform LOF if there are at least 20 exclusive points
+      exlv_rgns = rgns_smpl[[i_]][exlv_rgns_inds]             # exclusive regions
+      exlv_pnts = smpls_[[i_]][exlv_rgns_inds,,drop = F]      # points in exclusive regions
+      if(20 <= nrow(exlv_pnts))                               # perform LOF if there are at least 20 exclusive points
       {
-        message('\tRemoving outliers from sample #', i_)
-        lof_ = lof(x = exlv_pnts, k = 3, sort = F, approx = round(nrow(exlv_pnts)/1e5,1))     # kNN works too slowly if dataset size is over 1e5. approx helps to speed up
-        exlv_rgns_disim = exlv_rgns_disim + length(unique(exlv_rgns[which(lof_ < 1.3)]))      # dissim in exclusive regions: for each signal exclusive region (i.e. lof < 1.3), 1 is incremented as penalty
+        lof_ = dbscan::lof(x = exlv_pnts, k = 3, sort = F, approx = round(nrow(exlv_pnts)/1e5,1))     # kNN works too slowly if dataset size is over 1e5. approx helps to speed up
+        exlv_rgns_disim = length(unique(exlv_rgns[which(lof_ <= 1.2)]))                               # dissim in exclusive regions: for each signal exclusive region (i.e. lof <= 1.2), 1 is incremented as penalty
       }
 
       # extracting common regions
       rgns_smpl[[i_]] = rgns_smpl[[i_]][-exlv_rgns_inds]
     }
-    comm_rgns_disim = abs( table(sort(rgns_smpl[[i_]]))/nrow(smpls_[[i_]]) - comm_rgns_disim )      # dissim in common regions
-  }
-  mean_dissim = sum(exlv_rgns_disim,comm_rgns_disim)/(exlv_rgns_disim+length(common_rgns))      # total dissim is average of dissim vals in common and exclusive regions
+    comm_rgns_disim = table(sort(rgns_smpl[[i_]]))/nrow(smpls_[[i_]])     # dissim in common regions
 
+    return(list(exlv_rgns_disim = exlv_rgns_disim, comm_rgns_disim = comm_rgns_disim))
+  }
+  cl_ = makeCluster(getOption("cl.cores", 2))
+  dissim_ls = parLapply(X = 1:2, fun = myFunc, rgns_smpl, smpls_, cl = cl_)
+  stopCluster(cl_)
+
+  # measuring dissimilarity
+  exlv_rgns_disim = dissim_ls[[1]]$exlv_rgns_disim + dissim_ls[[2]]$exlv_rgns_disim             # dissim in exclusive regions
+  comm_rgns_disim = abs(dissim_ls[[1]]$comm_rgns_disim - dissim_ls[[2]]$comm_rgns_disim)        # dissim in common regions
+  mean_dissim = sum(exlv_rgns_disim,comm_rgns_disim)/(exlv_rgns_disim+length(common_rgns))      # total dissim is average of dissim vals in common and exclusive regions
   return( (1-mean_dissim)*100)      # similarity is 1-dissimilarity
 }
