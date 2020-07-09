@@ -10,7 +10,6 @@
 #' @param thresh_ Minimum for two samples being considered similar as a numeric (default NULL)
 #' @param smpl_graph If sample graph must be output (default True)
 #' @param disp_graph If dispersion graph must be output (default True)
-#' @param sim_graph If similarity graph must be output (default True)
 #'
 #' @details TBD
 #'
@@ -19,7 +18,6 @@
 #' @return cliques: cluster of samples
 #' @return samples_graph: graph of samples colored by community
 #' @return dispersion_graph: dispersion graph whose edges are colored by increasing similarity (red -> blue)
-#' @return sim_graph: a graph showing samples connected to their most similar ones
 #'
 #' @seealso \code{\link{compare}} for measuring spatial similarity between two samples.
 #'
@@ -41,7 +39,6 @@
 #'                            controls_ = "7,23,30,35,55,106,164,193,214,228,246,254,258,286,343,351,414,444,467,489,540",
 #'                            thresh_ = NULL,
 #'                            smpl_graph = T,
-#'                            sim_graph = T,
 #'                            disp_graph = T)
 #'
 #' # Step 3: Plotting samples graph in current directory as a pdf file ####
@@ -128,42 +125,9 @@
 #' plot(g_, add = F, mark.groups = which(V(g_)$name %in% 'Control'), mark.col = 'lightgreen', mark.expand = 1, mark.border = NA, directed = F)
 #' graphics.off()
 #'
-#' # Step 5: Plotting similarity graph ####
-#'
-#' # graph atts
-#' g_ = out_$similarity_graph
-#' g_$layout = layout_nicely(graph = g_, dim = 2)
-#'
-#' # vertex atts
-#' V(g_)$color = 'grey'
-#' V(g_)$size <- 0.15
-#' V(g_)$frame.color = NA
-#' V(g_)$label.cex = 1
-#' V(g_)$label.font = 2
-#' V(g_)$label.dist = 0
-#' V(g_)$label.degree = pi/2
-#' V(g_)$label.color = adjustcolor(col = 'black', alpha.f = .6)
-#'
-#' # edge atts
-#' cols_ = colorRampPalette(colors = c('red', 'blue'))(length(E(g_)))
-#' names(cols_) = sort(E(g_)$weight)     # lower values are assigned to red shades
-#' E(g_)$color = cols_[as.character(E(g_)$weight)]
-#' E(g_)$width = 1
-#' E(g_)$arrow.size = 0.3
-#' E(g_)$label = round(E(g_)$weight,1)
-#' E(g_)$label.cex = 0.7
-#' E(g_)$label.font = 2
-#' E(g_)$label.color = 'darkgreen'
-#'
-#' # plotting
-#' pdf(file = 'similarity_graph.pdf', width = 70, height = 70)
-#' par(mai = c(0, 0, 0,0))
-#' plot(g_, add = F, mark.groups = which(V(g_)$name %in% 'Control'), mark.col = 'lightgreen', mark.expand = 2, mark.border = NA, directed = F)
-#' graphics.off()
-#'
 #' @export
 
-clustering = function(simMat_ = NULL, controls_ = NULL, thresh_ = NULL, smpl_graph = TRUE, disp_graph = TRUE, sim_graph = TRUE)
+clustering = function(simMat_ = NULL, controls_ = NULL, thresh_ = NULL, smpl_graph = TRUE, disp_graph = TRUE)
 {
   require(igraph)     # if igraph pacakge is already installed
 
@@ -317,26 +281,6 @@ clustering = function(simMat_ = NULL, controls_ = NULL, thresh_ = NULL, smpl_gra
     g_$layout = layout_nicely(graph = g_, dim = 2)
 
     output_[['dispersion_graph']] = g_
-  }
-
-  # STEP 6: Similarity graph ####
-
-  if(sim_graph)
-  {
-    message('Constructing similarity graph')
-
-    # finding most similar node to each node taking control node as reference
-
-    diag(simMat_) = 0                     # to avoid self-loops
-    simMat_['Control',] = 0               # control node does not point to other nodes
-    for(row_ in 1:(nrow(simMat_)-1))      # last row/column is control
-    {
-      simMat_[row_, which(simMat_[row_,] < max(simMat_[row_,]))] = 0
-    }
-    g_ = graph_from_adjacency_matrix(adjmatrix = simMat_, mode = 'directed', weighted = T)
-    g_$layout = layout_nicely(graph = g_, dim = 2)
-
-    output_[['similarity_graph']] = g_
   }
 
   return(output_)

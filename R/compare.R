@@ -7,6 +7,7 @@
 #' @param smpl1 First smaple as a matrix or data frame object
 #' @param smpl2 Second sample
 #' @param n_ Number by which each dimension (column) is divided (default 5)
+#' @param par_ Whether or not to use parallelism (defaults TRUE)
 #'
 #' @details TBD
 #'
@@ -39,7 +40,7 @@
 #'
 #' @export
 
-compare = function(smpl1 = NULL, smpl2 = NULL, n_ = 5)
+compare = function(smpl1 = NULL, smpl2 = NULL, n_ = 5, par_ = TRUE)
 {
   require(parallel)
   require(dbscan)     # for LOF
@@ -115,9 +116,15 @@ compare = function(smpl1 = NULL, smpl2 = NULL, n_ = 5)
 
     return(list(exlv_rgns_disim = exlv_rgns_disim, comm_rgns_disim = comm_rgns_disim))
   }
-  cl_ = makeCluster(getOption("cl.cores", 2))
-  dissim_ls = parLapply(X = 1:2, fun = myFunc, rgns_smpl, smpls_, cl = cl_)
-  stopCluster(cl_)
+  if(par_)
+  {
+    cl_ = makeCluster(getOption("cl.cores", 2))
+    dissim_ls = parLapply(X = 1:2, fun = myFunc, rgns_smpl, smpls_, cl = cl_)
+    stopCluster(cl_)
+  }else
+  {
+    lapply(X = 1:2, FUN = myFunc, rgns_smpl, smpls_)
+  }
 
   # measuring dissimilarity
   exlv_rgns_disim = dissim_ls[[1]]$exlv_rgns_disim + dissim_ls[[2]]$exlv_rgns_disim             # dissim in exclusive regions

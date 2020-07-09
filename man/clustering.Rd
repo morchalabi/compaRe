@@ -9,7 +9,7 @@ clustering(
   controls_ = NULL,
   thresh_ = NULL,
   smpl_graph = TRUE,
-  sim_graph = TRUE
+  disp_graph = TRUE
 )
 }
 \arguments{
@@ -17,20 +17,21 @@ clustering(
 
 \item{controls_}{Indices of control samples in simMat_ as a string}
 
-\item{thresh_}{Minimum for two samples being considered similar as a numeric}
+\item{thresh_}{Minimum for two samples being considered similar as a numeric (default NULL)}
 
 \item{smpl_graph}{If sample graph must be output (default True)}
 
-\item{sim_graph}{If similarity graph must be output (default True)}
+\item{disp_graph}{If dispersion graph must be output (default True)}
 }
 \value{
-samples_table: samples with their assigned community (dense region)
+samples_table: adjacency graph of the similarity matrix after removing insignificant edges given the inferred threshold.
+                       Samples are colored by their assigned community (dense region) number.
 
 cliques: cluster of samples
 
 samples_graph: graph of samples colored by community
 
-sim_graph: graph possibly showing sample lineages
+dispersion_graph: dispersion graph whose edges are colored by increasing similarity (red -> blue)
 }
 \description{
 It needs some samples as controls and returns maximal cliques as clusters and highly interconnected regions as
@@ -53,7 +54,9 @@ data(package = 'compaRe', list = c('simMat'))
 
 out_ = compaRe::clustering(simMat_ = as.matrix(simMat),
                            controls_ = "7,23,30,35,55,106,164,193,214,228,246,254,258,286,343,351,414,444,467,489,540",
-                           thresh_ = NULL, smpl_graph = T, sim_graph = T)
+                           thresh_ = NULL,
+                           smpl_graph = T,
+                           disp_graph = T)
 
 # Step 3: Plotting samples graph in current directory as a pdf file ####
 
@@ -102,20 +105,25 @@ par(mai = c(0, 0, 0,0))
 plot(g_)
 graphics.off()
 
-# Step 4: Plotting similarity graph ####
+# Step 4: Plotting dispersion graph ####
 
-# graph atts
-g_ = out_$similarity_graph
-g_$layout = layout_nicely(graph = g_, dim = 2)
+g_ = out_$dispersion_graph
 
 # vertex atts
+if(!is.na(wells_drugs$concentration[1]))      # if there are drug doses
+{
+ rownames(wells_drugs) = wells_drugs$file
+  cntrl_ind = which(V(g_)$name == 'Control')
+  V(g_)$label = V(g_)$name
+  V(g_)$label[-cntrl_ind] = paste0(wells_drugs[V(g_)$name[-cntrl_ind],"drug"],'_',wells_drugs[V(g_)$name[-cntrl_ind],"concentration"])
+}
 V(g_)$color = 'grey'
-V(g_)$size <- 0.15
+V(g_)$size <- 0.1
 V(g_)$frame.color = NA
 V(g_)$label.cex = 1
 V(g_)$label.font = 2
-V(g_)$label.dist = 0
-V(g_)$label.degree = pi/2
+V(g_)$label.dist = 0.05
+V(g_)$label.degree = sample(c(-pi/2,pi/2), length(V(g_)),replace = T)
 V(g_)$label.color = adjustcolor(col = 'black', alpha.f = .6)
 
 # edge atts
@@ -123,16 +131,15 @@ cols_ = colorRampPalette(colors = c('red', 'blue'))(length(E(g_)))
 names(cols_) = sort(E(g_)$weight)     # lower values are assigned to red shades
 E(g_)$color = cols_[as.character(E(g_)$weight)]
 E(g_)$width = 1
-E(g_)$arrow.size = 0.3
 E(g_)$label = round(E(g_)$weight,1)
 E(g_)$label.cex = 0.7
 E(g_)$label.font = 2
 E(g_)$label.color = 'darkgreen'
 
 # plotting
-pdf(file = 'similarity_graph.pdf', width = 70, height = 70)
+pdf(file = '../out/dispersion_graph.pdf', width = 100, height = 100)
 par(mai = c(0, 0, 0,0))
-plot(g_, add = F, mark.groups = which(V(g_)$name \%in\% 'Control'), mark.col = 'lightgreen', mark.expand = 2, mark.border = NA, directed = F)
+plot(g_, add = F, mark.groups = which(V(g_)$name \%in\% 'Control'), mark.col = 'lightgreen', mark.expand = 1, mark.border = NA, directed = F)
 graphics.off()
 
 }

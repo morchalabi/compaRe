@@ -4,14 +4,16 @@
 \alias{compare}
 \title{Comparing two samples by measuring their similarity}
 \usage{
-compare(smpl1 = NULL, smpl2 = NULL, merge_ = TRUE)
+compare(smpl1 = NULL, smpl2 = NULL, n_ = 5, par_ = TRUE)
 }
 \arguments{
 \item{smpl1}{First smaple as a matrix or data frame object}
 
 \item{smpl2}{Second sample}
 
-\item{merge_}{If two samples must be merged first (default True)}
+\item{n_}{Number by which each dimension (column) is divided (default 5)}
+
+\item{par_}{Whether or not to use parallelism (defaults TRUE)}
 }
 \value{
 Similarity value
@@ -25,6 +27,7 @@ TBD
 }
 \examples{
 require(compaRe)
+require(dbscan)
 
 rm(list = ls())
 
@@ -41,7 +44,7 @@ smpl2 = log(smpl2+1)
 
 # Step 3: Comparing (measuring similarity)
 
-message(compaRe::compare(smpl1 = smpl1, smpl2 = smpl2, merge_ = TRUE))
+message(compaRe::compare(smpl1 = smpl1, smpl2 = smpl2, n_ = 4))
 
 }
 \seealso{
