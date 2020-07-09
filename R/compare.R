@@ -123,7 +123,7 @@ compare = function(smpl1 = NULL, smpl2 = NULL, n_ = 5, par_ = TRUE)
     stopCluster(cl_)
   }else
   {
-    lapply(X = 1:2, FUN = myFunc, rgns_smpl, smpls_)
+    dissim_ls = lapply(X = 1:2, FUN = myFunc, rgns_smpl, smpls_)
   }
 
   # measuring dissimilarity
