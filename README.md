@@ -6,11 +6,11 @@ To measure similarity between samples, we developed COMPARE. It measures the sim
 Run the following snippet in R or RStudio to install the package:
 
 ``` r
-if(!require(devtools)
+if(!require(devtools))
 {
   install.packages("devtools")
 }
-if(!require(igraph)
+if(!require(igraph))
 {
   install.packages("igraph")
 }
