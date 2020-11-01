@@ -1,4 +1,4 @@
-#' foo: A package for computating the notorious bar statistic.
+#' foo: A package for computing the notorious bar statistic.
 #'
 #' The foo package provides three categories of important functions:
 #' foo, bar and baz.
