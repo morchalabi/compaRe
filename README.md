@@ -14,5 +14,9 @@ if(!require(igraph))
 {
   install.packages("igraph")
 }
+if(!require(igraph))
+{
+  install.packages("dbscan")
+}
 devtools::install_github(repo = 'morchalabi/compaRe', ref = 'dev', dependencies = T)
 ```
