@@ -50,7 +50,7 @@ compare = function(smpl1 = NULL, smpl2 = NULL, n_ = 5, par_ = TRUE)
 
   # universal resizing so both samples are within range [-1,1] in all dimensions
   smpl_tmp = do.call(what = rbind, args = list(smpl1, smpl2))
-  smpl_tmp = 2*(smpl_tmp - min(smpl_tmp))/(diff(range(smpl_tmp)))-1
+  smpl_tmp = 2*(smpl_tmp - min(smpl_tmp))/diff(range(smpl_tmp))-1
   smpl1 = smpl_tmp[1:nrow(smpl1),]
   smpl2 = smpl_tmp[(nrow(smpl1)+1):nrow(smpl_tmp),]
   smpls_ = list(smpl1, smpl2)
