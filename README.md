@@ -5,7 +5,7 @@ COMPARE is an R package with two functions for similarity measurement and cluste
 1. does not need  dimension reduction
 1. does not need subsampling
 
-Read the integrated help page of the R package for more details about setup and running.
+Read the accompanying help page of the R package for more details about setup and running.
 
 For more information about its algorithms check out COMPARE-suite [similarity](https://github.com/morchalabi/COMPARE-suite/wiki/COMPARE-Suite#similarity-matrix-generator) and [clustering](https://github.com/morchalabi/COMPARE-suite/wiki/COMPARE-Suite#clustering) modules. COMPARE-suite is a pipeline for high-throughput screening built on COMPARE.
 
