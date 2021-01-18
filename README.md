@@ -27,3 +27,5 @@ Open the R interpreter or [RStudio](https://rstudio.com/products/rstudio/downloa
     {
       devtools::install_github(repo = 'morchalabi/compaRe', ref = 'master', dependencies = T, force = T)
     }
+
+report any bug/issue on the [Issue page](https://github.com/morchalabi/compaRe/issues).
