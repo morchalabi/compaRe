@@ -1,7 +1,7 @@
 # COMPARE
 COMPARE is an R package with two functions for similarity measurement and clustering. It employs a dynamic programming algorithm to measure spatial similarity between two given datasets. One can then use this function to generate a similarity/affinity matrix which can then be input to the clustering function. The clustering function reports maximal cliques as clusters and dense areas as communities. COMPARE
 1. is data-size independent
-1. can effectively circumvent the batch effect
+1. can effectively circumvent background noise (like batch effect)
 1. does not need  dimension reduction
 1. does not need subsampling
 
