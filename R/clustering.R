@@ -11,7 +11,10 @@
 #' @param smpl_graph If sample graph must be output (default True)
 #' @param disp_graph If dispersion graph must be output (default True)
 #'
-#' @details TBD
+#' @details COMPARE uses a graphical clustering algorithm in which initially all nodes (samples) are connected forming
+#' a weighted complete graph wherein edges represent the similarity between the nodes. This graph is then pruned to remove
+#' potential false positive edges for a given cutoff inferred from control nodes. The optimal cutoff turns out to be
+#' the minimum weight in the maximum spanning tree of the control nodes. For more information visit \url{https://github.com/morchalabi/COMPARE-suite}.
 #'
 #' @return samples_table: adjacency graph of the similarity matrix after removing insignificant edges given the inferred threshold.
 #'                        Samples are colored by their assigned community (dense region) number.
@@ -27,11 +30,9 @@
 #' require(compaRe)
 #' require(igraph)
 #'
-#' rm(list = ls())
-#'
 #' # Step 1: Reading in similarity matrix ####
 #'
-#' data(package = 'compaRe', list = c('simMat'))
+#' data("compaRe_data")
 #'
 #' # Step 2: Clustering ####
 #'

@@ -9,7 +9,10 @@
 #' @param n_ Number by which each dimension (column) is divided (default 5)
 #' @param par_ Whether or not to use parallelism (defaults TRUE)
 #'
-#' @details TBD
+#' @details Benefiting from dynamic programming, it grids two datasets individually into spatial units, hypercubes,
+#' and measures the difference between their ratios in each pair of corresponding hypercubes. Averaging all the
+#' differences across all the pairs represents the overall similarity between the two datasets. For more information
+#' visit \url{https://github.com/morchalabi/compaRe}
 #'
 #' @return Similarity value
 #'
@@ -21,11 +24,9 @@
 #' require(compaRe)
 #' require(dbscan)
 #'
-#' rm(list = ls())
-#'
 #' # Step 1: Reading in fcs files
 #'
-#' data(package = 'compaRe', list = c('dataset1','dataset2'))
+#' data("compaRe_data")
 #'
 #' # Step 2: Transforming data
 #'
