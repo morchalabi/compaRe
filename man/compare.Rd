@@ -23,17 +23,18 @@ It returns spatial similarity of two data sets with equal number of columns (var
 of rows (observations).
 }
 \details{
-TBD
+Benefiting from dynamic programming, it grids two datasets individually into spatial units, hypercubes,
+and measures the difference between their ratios in each pair of corresponding hypercubes. Averaging all the
+differences across all the pairs represents the overall similarity between the two datasets. For more information
+visit \url{https://github.com/morchalabi/compaRe}
 }
 \examples{
 require(compaRe)
 require(dbscan)
 
-rm(list = ls())
-
 # Step 1: Reading in fcs files
 
-data(package = 'compaRe', list = c('dataset1','dataset2'))
+data("compaRe_data")
 
 # Step 2: Transforming data
 
