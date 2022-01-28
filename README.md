@@ -26,6 +26,6 @@ Refer to [Q&A](https://github.com/morchalabi/compaRe/discussions/categories/q-a)
 
 Report any bug/issue on the [Issue page](https://github.com/morchalabi/compaRe/issues).
 
-## How to citate compaRe
+## How to cite compaRe
 
 Refer to [Q&A](https://github.com/morchalabi/compaRe/discussions/categories/q-a).
