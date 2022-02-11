@@ -107,7 +107,7 @@ compare = function(smpl1 = NULL, smpl2 = NULL, n_ = 5, par_ = TRUE)
       if(20 <= nrow(exlv_pnts))                               # perform LOF if there are at least 20 exclusive points
       {
         lof_ = dbscan::lof(x = exlv_pnts, k = 3, approx = round(nrow(exlv_pnts)/1e5,1))     # kNN works too slowly if dataset size is over 1e5. approx helps to speed up
-        exlv_rgns_disim = length(unique(exlv_rgns[which(lof_ <= 1.2)]))                               # dissim in exclusive regions: for each signal exclusive region (i.e. lof <= 1.2), 1 is incremented as penalty
+        exlv_rgns_disim = length(unique(exlv_rgns[which(lof_ <= 1.2)]))                     # dissim in exclusive regions: for each signal exclusive region (i.e. lof <= 1.2), 1 is incremented as penalty
       }
 
       # extracting common regions
